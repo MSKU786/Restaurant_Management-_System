@@ -2,25 +2,25 @@ package controller
 
 import "github.com/gin-gonic/gin"
 
-func GetUsers() gin.HandleFunc{
+func GetUsers() gin.HandlerFunc{
 		return func(c *gin.Context) {
 
 		}
 }
 
-func GetUser() gin.HandleFunc{
+func GetUser() gin.HandlerFunc{
 	return func(c *gin.Context) {
 
 	}
 }
 
-func SignUp() gin.HandleFunc{
+func SignUp() gin.HandlerFunc{
 	return func(c *gin.Context) {
 
 	}
 }
 
-func LogIn() gin.HandleFunc{
+func LogIn() gin.HandlerFunc{
 	return func(c *gin.Context) {
 
 	}
@@ -32,5 +32,5 @@ func HashPassword(password string) string{
 }
 
 func VerifyPassword(userPassword string, providePassword string) (bool, string) {
-	
+
 }
