@@ -44,7 +44,7 @@ func GetFood() gin.HandlerFunc{
 
 func CreateFood() gin.HandlerFunc{
 	return func(c *gin.Context) {
-		var ctx, cancel = context.WithTimeout((context.Background(), 100*time.Second);
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
 		var food models.Food
 		var menu models.Menu
 
@@ -56,7 +56,7 @@ func CreateFood() gin.HandlerFunc{
 		validationErr := 	validate.Struct(food)
 
 		if validationErr != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": validationErr.Error()})
 			return 
 		}
 
@@ -69,12 +69,12 @@ func CreateFood() gin.HandlerFunc{
 			return;
 		}
 
-		food.Created_at, _ = time.Parse(time.RFC3339, time.Now()).Format(time.RFC3339);
-		food.Updated_at, _ = time.Parse(time.RFC3339, time.Now()).Format(time.RFC3339);
+		food.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339));
+		food.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339));
 		food.ID = primitive.NewObjectID()
 		food.Food_id = food.ID.Hex();
 		var num = toFixed(*food.Price, 2);
-		food.Price = &num;
+		food.Price = &num
 
 		result, insertErr := foodCollection.InsertOne(ctx, food);
 
@@ -85,7 +85,7 @@ func CreateFood() gin.HandlerFunc{
 		}
 
 		defer cancel()
-		c.JSON( http.StatusOK, food);
+		c.JSON( http.StatusOK, result);
 	}
 }
 
