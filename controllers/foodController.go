@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"restaurant-managment-system/database"
 	"restaurant-managment-system/models"
@@ -44,14 +45,15 @@ func GetFoods() gin.HandlerFunc{
 			projectStage := bson.D{
 				{
 						Key: "$project", Value: bson.D{
-							{"_id":0},
-							{"total_count":1}
-							{"food_items":bson.D{
-								{"slice", []interface{"$data", startIndex, recordPerPage}}
-							}}
-						}
-				}
-			}
+								{Key: "_id", Value: 0},
+								{Key: "total_count", Value: 1},
+								{Key: "food_items", Value: bson.D{
+										{Key: "$slice", Value: []interface{}{"$data", startIndex, recordPerPage}},
+								}},
+						},
+				},
+		}
+		
 
 			result, err := foodCollection.Aggregate(ctx, mongo.Pipeline{
 					matchStage, groupStage, projectStage
@@ -61,6 +63,13 @@ func GetFoods() gin.HandlerFunc{
 			if (err != nil) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error":"error occured while listing food items"})
 			}
+
+			var allFoods []bson.M;
+			if err == result.All(ctx, &allFoods); err != nil {
+				log.Fatal(err);
+			}
+
+			c.JSON(http.StatusOK, allFoods);
 		}
 }
 
