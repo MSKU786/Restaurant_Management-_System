@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"restaurant-managment-system/database"
 	"restaurant-managment-system/models"
@@ -139,14 +140,78 @@ func CreateFood() gin.HandlerFunc{
 
 func UpdateFood() gin.HandlerFunc{
 	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
+		var food models.Food
+		var menu models.Menu
 
+		foodId := c.Param("food_id")
+
+		if err := c.BindJSON(&food); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error" : err.Error()})
+		}
+
+		var updatedObj primitive.D
+
+		if food.Name != nil {
+				updatedObj = append(updatedObj, bson.E{Key: "name", Value: food.Name})
+		}
+
+		if food.Price != nil {
+				updatedObj = append(updatedObj, bson.E{Key: "price", Value: food.Price})
+		}
+
+		if food.Food_image != nil {
+				updatedObj = append(updatedObj, bson.E{Key: "food_image", Value: food.Food_image})
+		}
+
+		if food.Menu_id != nil {
+				err := menuCollection.FindOne(cts, bson.M{"menu_id": food.Menu_id}).Decode(&menu)
+				defer cancel() 
+
+				if err != nil {
+					msg := fmt.Sprintf("message: menu not found")
+					c.JSON(http.StatusInternalServerError, gin.H{"error", msg})
+					return;
+				}
+				updatedObj = append(updatedObj, bson.E{Key: "menu_id", Value: food.Menu_id})
+		}
+		
+
+		food.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		updatedObj = append(updatedObj, bson.E{Key: "updated_at", Value: food.Updated_at})
+
+		upsert := true
+		filter := bson.M{"food_id": foodId}
+
+		opt := options.UpdateOptions{
+			Upsert : &upsert,
+		}
+
+		result, err := foodCollection.UpdateOne(
+			ctx,
+			filter,
+			bson.D{
+				{Key: "$set", Value: updatedObj},
+			},
+			&opt,
+		)
+
+		if err !=nil {
+			msg := fmt.Sprintf("Food item update failed")
+			c.JSON(http.StatusInternalServerError, gin.H{"error":msg})
+			return;
+		}
+
+		defer cancel()
+		c.JSON( http.StatusOK, result);
 	}
 }
 
 func round(num float64) int {
-
+		return int(num + math.Copysign(0.5, num))
 }
 
 func toFixed(num float64, precision int) int {
-
+		output := math.Pow(10, float64(precision))
+		return float64(round(num*output))/output;
 }
