@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"restaurant-managment-system/database"
+	"restaurant-managment-system/models"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,7 +42,18 @@ func GetOrders() gin.HandlerFunc{
 
 func GetOrder() gin.HandlerFunc{
 	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		orderId := c.Param("order_id")
+		var order models.Order
 
+		err := orderCollection.FindOne(ctx, bson.M{"order_id": orderId}).Decode( &order);
+		defer cancel()
+
+		if err!=nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error occurred while fetching the food"})
+		}
+
+		c.JSON( http.StatusOK, order);
 	}
 }
 
