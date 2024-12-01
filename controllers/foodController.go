@@ -165,7 +165,7 @@ func UpdateFood() gin.HandlerFunc{
 		}
 
 		if food.Menu_id != nil {
-				err := menuCollection.FindOne(cts, bson.M{"menu_id": food.Menu_id}).Decode(&menu)
+				err := menuCollection.FindOne(ctx, bson.M{"menu_id": food.Menu_id}).Decode(&menu)
 				defer cancel() 
 
 				if err != nil {
