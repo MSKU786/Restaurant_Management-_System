@@ -49,12 +49,47 @@ func GetOrderItems() gin.HandlerFunc{
 
 func GetOrderItem() gin.HandlerFunc{
 	return func(c *gin.Context) {
+			var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
 
+			orderItemId := c.Param("order_item_id");
+
+			var orderItem models.OrderItem;
+
+			err := orderItemCollection.FindOne(ctx, bson.M{"order_item": orderItemId}).Decode(&orderItem);	
+
+			defer cancel();
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error":"error occured while listing order items"})
+				return
+			}
+
+			c.JSON(http.StatusOK, orderItem);
 	}
 }
 
 func GetOrderItemsByOrder() gin.HandlerFunc{
 	return func(c *gin.Context) {
+			orderId := c.Param("order_id");
+
+			var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
+
+			result, err := orderItemCollection.Find(context.TODO(), bson.M{"order_id": orderId});
+
+			defer cancel();
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error":"error occured while listing order items"})
+				return;
+			}
+
+			var allOrderItems []bson.M;
+
+			if err = result.All(ctx, &allOrderItems) ; err != nil {
+				log.Fatal(err);
+				return;
+			}
+
+			c.JSON(http.StatusOK, allOrderItems);
 
 	}
 }
