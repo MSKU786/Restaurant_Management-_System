@@ -35,7 +35,19 @@ func GetTables() gin.HandlerFunc{
 
 func GetTable() gin.HandlerFunc{
 	return func(c *gin.Context) {
+			var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
+			tableId := c.Param("table_id");
 
+			var table model.Table;
+
+			err := tableCollection.FindOne(ctx, bson.M{"table_id": tableId}).Decode(&table);
+			defer cancel()
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occured while fetching the table"})
+			}
+
+			c.JSON(http.StatusOK, table);
 	}
 }
 
