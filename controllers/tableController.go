@@ -2,12 +2,14 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"restaurant-managment-system/database"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -53,6 +55,37 @@ func GetTable() gin.HandlerFunc{
 
 func CreateTable() gin.HandlerFunc{
 	return func(c *gin.Context) {
+			var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);	
+			var table model.Table;
+
+			if err := c.BindJSON(&table); err != nil{
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return;
+			}
+
+			validationError := validate.Struct(table);
+
+			if (validationError != nil) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": validationError.Error()})
+				return;
+			}
+
+			table.created_at , _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339));
+			table.updated.at , _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339));
+			table.ID = primitive.NewObjectID();
+			table.Table_id = table.ID.Hex();
+
+			result, insertErr := tableCollection.InsertOne(ctx, table);
+
+			if insertErr != nil {
+				msg: fmt.Sprintf("Table item was not created")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
+				return;
+			}
+
+			defer cancel();
+			c.JSON(http.StatusOK, table);
+
 
 	}
 }
