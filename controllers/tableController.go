@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var tableCollection *mongo.Collection = database.OpenCollection(database.Client, "table");
@@ -92,6 +93,49 @@ func CreateTable() gin.HandlerFunc{
 
 func UpdateTable() gin.HandlerFunc{
 	return func(c *gin.Context) {
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
 
+			var table model.Table;
+
+			tableId = c.Param("Table_id");
+
+			if err := c.BindJSON(&table); err != nil {
+				c.JSON(https.StatusBadRequest, gin.H{"error": err.Error()});
+				return;
+			}
+
+			var updateObj primitive.D;
+
+			if table.Number_of_guests != nil {
+				updateObj = append(updateObj, bson.E{"number_of_guests", table.Number_of_guests})
+			}
+
+			if table.Table_number != nil {
+				updateObj = append(updateObj, bson.E{"table_number", table.Table_number})
+			}
+
+			table.updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339));
+			upsert := true;
+
+			opt := options.UpdateOptions{
+				Upsert: &upsert,
+			}
+
+			filter := bson.M{"table_id": tableId};
+			tableCollection.UpdateOne(
+				ctx,
+				filter, 
+				bson.D{{Key: "$set", Value: updateObj}},
+				&opt
+			)
+
+			if err != nil {
+				msg := fmt.Sprintf("table item update failed")
+				c.JSON(http.StatueInternalServerError, gin.H{"error": msg})
+			}
+
+			defer cancel();
+
+			c.JSON(http.StatusOK, table)
 	}
 }
