@@ -106,7 +106,24 @@ func ItemsByOrder(id string) (OrderItmes []primitive.M, err error) {
 		unwindStageOrder := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$order"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}}
 
 		lookupTableStage := bson.D{{Key: "$lookup", Value: bson.D{{Key: "from", Value: "table"}, {Key: "localfield", Value: "order.table_id"},{Key: "foreginfield", Value: "table_id"}, {Key: "as", Value: "table"}}}};
-		unbindTableStage := bson.D{{Key: "$unwind"}}
+		unbindTableStage := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$table"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}}
+
+		projectStage := bson.D{
+			{Key: "$project", Value: bson.D{
+				{Key: "_id", Value: 0},
+				{Key: "amount", Value: "$food.price" },
+				{Key: "totalCount", Value: 1},
+				{Key: "food_name", Value: "$food.name"},
+				{Key: "food_image", Value: "$food.food_image"},
+				{Key: "table_number", Value: "$table.table_number"},
+				{Key: "table_id", Value: "$table.table_id"},
+				{Key: "order_id", Value: "$order.order_id"},
+				{Key: "price", Value: "$food.price"},
+				{Key: "quantity", Value: 1},
+			},
+		}}
+
+		groupStage := bson.D{{Key: "$group", Value: bson.D{{Key: "_id", Value: bson.D{{Key: "order_id", Value: "$order_id"}, {Key: "table_id", Value: "$table_id"}, {Key: "table_number", Value: "$table_number"}}}, {Key: "payment_due", Value: bson.D{"$sum", "$amount"}}, {Key: "total_count", Value: bson.D{{"$sum", "$totalCount"}}}, {Key: "order_items", Value: bson.D{{"$push", bson.D{{"food_name", "$food_name"}}}}}}}}}}
 		
 	}
 
