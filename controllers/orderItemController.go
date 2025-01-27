@@ -96,8 +96,19 @@ func GetOrderItemsByOrder() gin.HandlerFunc{
 }
 
 func ItemsByOrder(id string) (OrderItmes []primitive.M, err error) {
-	
-}
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
+
+		matchStage := bson.D{{Key: "$match", Value: bson.D{{Key: "order_id", Value: id}}}};
+		lookupstage := bson.D{{Key: "$lookup", Value: bson.D{{Key: "from", Value: "food"}, {Key: "localfield", Value: "food_id"}, {Key: "foreginfield", Value: "food_id"}, {Key: "as", Value: "food"}}}}
+		unwindstage := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$food"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}}
+
+		lookupOrderstage := bson.D{{Key: "$lookup", Value: bson.D{{Key: "from", Value: "order"}, {Key: "localfield", Value: "order_id"}, {Key: "foreginfield", Value: "order_id"}, {Key: "as", Value: "order"}}}}
+		unwindStageOrder := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$order"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}}
+
+		lookupTableStage := bson.D{{Key: "$lookup", Value: bson.D{{Key: "from", Value: "table"}, {Key: "localfield", Value: "order.table_id"},{Key: "foreginfield", Value: "table_id"}, {Key: "as", Value: "table"}}}};
+		unbindTableStage := bson.D{{Key: "$unwind"}}
+		
+	}
 
 func CreateOrderItem() gin.HandlerFunc{
 	return func(c *gin.Context) {
