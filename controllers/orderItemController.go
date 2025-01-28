@@ -123,8 +123,41 @@ func ItemsByOrder(id string) (OrderItmes []primitive.M, err error) {
 			},
 		}}
 
-		groupStage := bson.D{{Key: "$group", Value: bson.D{{Key: "_id", Value: bson.D{{Key: "order_id", Value: "$order_id"}, {Key: "table_id", Value: "$table_id"}, {Key: "table_number", Value: "$table_number"}}}, {Key: "payment_due", Value: bson.D{"$sum", "$amount"}}, {Key: "total_count", Value: bson.D{{"$sum", "$totalCount"}}}, {Key: "order_items", Value: bson.D{{"$push", bson.D{{"food_name", "$food_name"}}}}}}}}}}
+		groupStage := bson.D{{Key: "$group", Value: bson.D{{Key: "_id", Value: bson.D{{Key: "order_id", Value: "$order_id"}, {Key: "table_id", Value: "$table_id"}, {Key: "table_number", Value: "$table_number"}}}, {Key: "payment_due", Value: bson.D{"$sum", "$amount"}}, {Key: "total_count", Value: bson.D{{Key: "$sum", Value: "$totalCount"}}}, {Key: "order_items", Value: bson.D{{Key: "$push", Value: bson.D{{Key: "food_name", Value: "$food_name"}}}}}}}}}};
 		
+		projectStage2 := bson.D{
+			{"$project", bson.D{
+				{"id", 0},
+				{"payment_due", 1},
+				{"total_count", 1},
+				{"table_number", "$_id.table_number"},
+				{"order_items", 1}
+			}}}
+		
+		result , err := orderItemCollection.Aggregate(ctx, mongo.Pipeline{
+			matchStage,
+			lookupstage,
+			unwindstage,
+			lookupOrderstage,
+			unwindStageOrder,
+			lookupTableStage,,
+			unwindtableStage,,
+			projectStage,
+			groupStage,,
+			projectStage2
+		})
+
+		if err != nil {
+			panic(err);
+		}
+
+		if err = result.All(ctx, &OrderItmes); err != nil {
+			log.Fatal(err);
+		}
+
+		defer cancel();
+
+		return OrderItems, err;
 	}
 
 func CreateOrderItem() gin.HandlerFunc{
