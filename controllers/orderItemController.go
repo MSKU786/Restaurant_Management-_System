@@ -106,7 +106,7 @@ func ItemsByOrder(id string) (OrderItmes []primitive.M, err error) {
 		unwindStageOrder := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$order"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}}
 
 		lookupTableStage := bson.D{{Key: "$lookup", Value: bson.D{{Key: "from", Value: "table"}, {Key: "localfield", Value: "order.table_id"},{Key: "foreginfield", Value: "table_id"}, {Key: "as", Value: "table"}}}};
-		unbindTableStage := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$table"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}}
+		unwindTableStage := bson.D{{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$table"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}}
 
 		projectStage := bson.D{
 			{Key: "$project", Value: bson.D{
@@ -123,15 +123,15 @@ func ItemsByOrder(id string) (OrderItmes []primitive.M, err error) {
 			},
 		}}
 
-		groupStage := bson.D{{Key: "$group", Value: bson.D{{Key: "_id", Value: bson.D{{Key: "order_id", Value: "$order_id"}, {Key: "table_id", Value: "$table_id"}, {Key: "table_number", Value: "$table_number"}}}, {Key: "payment_due", Value: bson.D{"$sum", "$amount"}}, {Key: "total_count", Value: bson.D{{Key: "$sum", Value: "$totalCount"}}}, {Key: "order_items", Value: bson.D{{Key: "$push", Value: bson.D{{Key: "food_name", Value: "$food_name"}}}}}}}}}};
+		groupStage := bson.D{{Key: "$group", Value: bson.D{{Key: "_id", Value: bson.D{{Key: "order_id", Value: "$order_id"}, {Key: "table_id", Value: "$table_id"}, {Key: "table_number", Value: "$table_number"}}}, {Key: "payment_due", Value: bson.D{{Key: "$sum", Value: "$amount"}}}, {Key: "total_count", Value: bson.D{{Key: "$sum", Value: "$totalCount"}}}, {Key: "order_items", Value: bson.D{{Key: "$push", Value: bson.D{{Key: "food_name", Value: "$food_name"}}}}}}}};
 		
 		projectStage2 := bson.D{
-			{"$project", bson.D{
-				{"id", 0},
-				{"payment_due", 1},
-				{"total_count", 1},
-				{"table_number", "$_id.table_number"},
-				{"order_items", 1}
+			{Key: "$project", Value: bson.D{
+				{Key: "id", Value: 0},
+				{Key: "payment_due", Value: 1},
+				{Key: "total_count", Value: 1},
+				{Key: "table_number", Value: "$_id.table_number"},
+				{Key: "order_items", Value: 1},
 			}}}
 		
 		result , err := orderItemCollection.Aggregate(ctx, mongo.Pipeline{
@@ -140,24 +140,26 @@ func ItemsByOrder(id string) (OrderItmes []primitive.M, err error) {
 			unwindstage,
 			lookupOrderstage,
 			unwindStageOrder,
-			lookupTableStage,,
-			unwindtableStage,,
+			lookupTableStage,
+			unwindTableStage,
 			projectStage,
-			groupStage,,
-			projectStage2
+			groupStage,
+			projectStage2,
 		})
+
+		var orderItems []bson.M;
 
 		if err != nil {
 			panic(err);
 		}
 
-		if err = result.All(ctx, &OrderItmes); err != nil {
+		if err = result.All(ctx, &orderItems); err != nil {
 			log.Fatal(err);
 		}
 
 		defer cancel();
 
-		return OrderItems, err;
+		return orderItems, err;
 	}
 
 func CreateOrderItem() gin.HandlerFunc{
@@ -193,7 +195,7 @@ func CreateOrderItem() gin.HandlerFunc{
 				orderItem.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339));
 				orderItem.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339));	
 				orderItem.Order_item_id = orderItem.ID.Hex();
-				var num = toFixed(*orderItem.Unit_price, 2)
+				var num  = toFixed(*orderItem.Unit_price, 2)
 				orderItem.Unit_price = &num;
 				orderItemsToBeInserted = append(orderItemsToBeInserted, orderItem);
 
