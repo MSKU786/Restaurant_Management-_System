@@ -31,14 +31,26 @@ func GetUsers() gin.HandlerFunc{
 					page = 1;
 				}
 
-				startIndex = (page-1) * recordsPerPage;
+				startIndex := (page-1) * recordsPerPage;
 				startIndex, err = strconv.Atoi(c.Query("startIndex"));
 
-				matchStage := bson.D{{"$match", bson.D{}}};
+				matchStage := bson.D{{Key: "$match", Value: bson.D{}}};
+				projectStage := bson.D{
+					{Key: "$project", Value: bson.D{
+						{Key: "_id", Value: 0},
+						{Key: "total_count", Value: 1},
+						{Key: "user_items", Value: bson.D{
+							{Key: "$slice", Value: []interface{}{"$data", startIndex, recordsPerPage},
+						}}},
+					}}}
+
 				
+				result, err := userCollection.Aggregate(ctx, mongo.Pipeline{matchStage, projectStage});
+				defer cancel();
+
 				var allUsers []bson.M;
 
-				result ,err := userCollection.Find(context.TODO(), bson.M{})
+				// result ,err := userCollection.Find(context.TODO(), bson.M{})
 
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error":"Error occured while listing users"})
