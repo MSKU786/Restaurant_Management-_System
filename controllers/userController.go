@@ -2,9 +2,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"restaurant-managment-system/database"
+	"restaurant-managment-system/helpers"
 	"restaurant-managment-system/models"
 	"strconv"
 	"time"
@@ -134,8 +136,25 @@ func SignUp() gin.HandlerFunc{
 			newUser.Updated_at, _ = time.Parse(time.RFC1123, time.Now().Format(time.RFC1123));
 			newUser.ID = primitive.NewObjectID();
 			newUser.User_id = newUser.ID.Hex();
-			
 
+			// Generate token and refresh token
+			token, refreshToken, _ := helpers.GenerateAllTokens(*newUser.Email, *newUser.First_name, *newUser.Last_name, *&newUser.User_id)
+			newUser.Token = &token;
+			newUser.Refresh_token = &refreshToken;
+
+			//If all okay then insert the data into the database
+			result, insertErr := userCollection.InsertOne(ctx, newUser);
+
+			if insertErr != nil {
+				msg := fmt.Sprintf("User is not created")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": msg});
+				return;
+			}
+
+			defer cancel();
+
+			//return status result and return okay
+			c.JSON(http.StatusOK, result);
 	}
 }
 
