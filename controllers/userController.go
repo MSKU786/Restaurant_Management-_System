@@ -2,13 +2,16 @@ package controller
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"restaurant-managment-system/database"
+	"restaurant-managment-system/models"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -78,30 +81,65 @@ func SignUp() gin.HandlerFunc{
 			var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
 
 			//convert the JSON data coming from postman to what golang can undertand
-			var newUser User;
+			var newUser models.User;
 
-			if err := c.BindJSON(&newUser); err !=- nil {
+			if err := c.BindJSON(&newUser); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()});
 				return;
 			}
 
 			// Validate the data based on struct defined
-			if newUser.Email == "" {
-
+			validateErr := validate.Struct(newUser);
+			if validateErr != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": validateErr.Error()});
+				return;
 			}
 
+			// Yow will the check if the email has already been used by another user
 			//First check if the email already exists
 			emailCount, err := userCollection.CountDocuments(context.Background(), bson.M{"email": newUser.Email});
-			
+			defer cancel();
+			if err != nil {
+				log.Panic(err);
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occured while checking for the email"});
+				return;
+			}
 
-			// Hash the password
+			// Hash Password
+			password := HashPassword(*newUser.Password);
+			newUser.Password = &password;
 
+			if emailCount > 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Email alread exists"});
+				return;
+			}
 
 			// need to check if phone number is already registerd by other users
+			phoneCount, err := userCollection.CountDocuments(context.Background(), bson.M{"phone": newUser.Phone});
+			defer cancel();
+			if err != nil {
+				log.Panic(err);
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occured while checking for the email"});
+				return;
+			}
+
+			if phoneCount > 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Phone number already exists"});
+				return;
+			}
+			
+
+			// Create some extra fields
+			newUser.Created_at, _ = time.Parse(time.RFC1123, time.Now().Format(time.RFC1123));
+			newUser.Updated_at, _ = time.Parse(time.RFC1123, time.Now().Format(time.RFC1123));
+			newUser.ID = primitive.NewObjectID();
+			newUser.User_id = newUser.ID.Hex();
+			
+
 	}
 }
 
-func LogIn() gin.HandlerFunc{
+func Login() gin.HandlerFunc{
 	return func(c *gin.Context) {
 
 	}
