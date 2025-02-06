@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 
@@ -138,7 +139,7 @@ func SignUp() gin.HandlerFunc{
 			newUser.User_id = newUser.ID.Hex();
 
 			// Generate token and refresh token
-			token, refreshToken, _ := helpers.GenerateAllTokens(*newUser.Email, *newUser.First_name, *newUser.Last_name, *&newUser.User_id)
+			token, refreshToken, _ := helpers.GenerateAllTokens(*newUser.Email, *newUser.First_name, *newUser.Last_name, *newUser.User_id)
 			newUser.Token = &token;
 			newUser.Refresh_token = &refreshToken;
 
@@ -160,15 +161,62 @@ func SignUp() gin.HandlerFunc{
 
 func Login() gin.HandlerFunc{
 	return func(c *gin.Context) {
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second);
 
+			var user models.User;
+			var foundUser models.User;
+
+			if err := c.Bind(&user); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()});
+				return;
+			}
+
+			// Find the user with the email
+			err := userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&foundUser);
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid email"});
+				return;
+			}
+
+			// Verify the password
+			passwordIsValid, msg := VerifyPassword(*user.Password, *foundUser.Password);
+			if (!passwordIsValid) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": msg});
+				return;
+			}
+
+			// Generate Token and refresh token
+			token, refreshToken, _ := helpers.GenerateAllTokens(*foundUser.Email, *&foundUser.First_name, *&foundUser.Last_name, *foundUser.User_id);
+
+			// update the token and refersh token
+			helpers.UpdateAllToken(token, refreshToken, foundUser.User_id);
+
+			defer cancel();
+
+			c.JSON(http.StatusOK, gin.H{"message": "User Logged in successfully"});
 	}
 }
 
 
 func HashPassword(password string) string{
+		bytes, err := bcrypt.GenerateFromPassword([]byte(password, 14));
+		if err != nil {
+			log.Panic(err);
+		}
 
+		return string(bytes)
 }
 
 func VerifyPassword(userPassword string, providePassword string) (bool, string) {
+		err := bcrypt.CompareHashAndPassword([[] byte(providePassword), []byte(userPassword)]);
+		check := true
+		msg := ""
 
+		if err != nil {
+			msg = fmt.Sprintf("Invalid password");
+			check := false;
+		}
+
+		return check, msg;
 }
