@@ -1,7 +1,9 @@
 package helpers
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"restaurant-managment-system/database"
@@ -96,7 +98,29 @@ func UpdateAllToken(signedToken string, signedRefreshToken string, userId string
 
 
 func ValidateToken(signedToken string ) (claims *SignedDetails,  msg string) {
+		token, err := jwt.ParseWithClaims(
+			signedToken,
+			&SignedDetails{},
+			func(token *jwt.Token) (interface{}, error) {
+				return []byte(SECRET_KEY), nil
+			},
+		)
 
+		claims, ok := token.claims.(*SignedDetails);
+		if (!ok) {
+			msg = fmt.Sprintf("the token is invalid")
+			msg = err.Error();
+			return;
+		}
+
+		// the token is expired
+		if claims.ExpiresAt < time.Now().Local().Unix() {
+				msg = fmt.Sprintf("Token is expired");
+				msg = err.Error();
+				return;
+		}
+
+		return claims, msg;
 }
 
 
