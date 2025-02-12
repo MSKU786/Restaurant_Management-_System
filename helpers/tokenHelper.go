@@ -95,7 +95,7 @@ func UpdateAllToken(signedToken string, signedRefreshToken string, userId string
 }
 
 
-func ValidateToken() {
+func ValidateToken(signedToken string ) (claims *SignedDetails,  msg string) {
 
 }
 
