@@ -25,6 +25,7 @@ var userCollection *mongo.Collection = database.OpenCollection(database.Client, 
 func GetUsers() gin.HandlerFunc{
 		return func(c *gin.Context) {
 				var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
+				defer cancel()
 
 
 				recordsPerPage, err := strconv.Atoi(c.Query("recordsPerPage"));
@@ -82,7 +83,7 @@ func GetUser() gin.HandlerFunc{
 func SignUp() gin.HandlerFunc{
 	return func(c *gin.Context) {
 			var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second);
-
+			defer cancel();
 			//convert the JSON data coming from postman to what golang can undertand
 			var newUser models.User;
 
@@ -139,7 +140,7 @@ func SignUp() gin.HandlerFunc{
 			newUser.User_id = newUser.ID.Hex();
 
 			// Generate token and refresh token
-			token, refreshToken, _ := helpers.GenerateAllTokens(*newUser.Email, *newUser.First_name, *newUser.Last_name, *newUser.User_id)
+			token, refreshToken, _ := helpers.GenerateAllTokens(*newUser.Email, *newUser.First_name, *newUser.Last_name, newUser.User_id)
 			newUser.Token = &token;
 			newUser.Refresh_token = &refreshToken;
 
@@ -162,7 +163,7 @@ func SignUp() gin.HandlerFunc{
 func Login() gin.HandlerFunc{
 	return func(c *gin.Context) {
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second);
-
+			defer cancel();
 			var user models.User;
 			var foundUser models.User;
 
@@ -187,7 +188,7 @@ func Login() gin.HandlerFunc{
 			}
 
 			// Generate Token and refresh token
-			token, refreshToken, _ := helpers.GenerateAllTokens(*foundUser.Email, *&foundUser.First_name, *&foundUser.Last_name, *foundUser.User_id);
+			token, refreshToken, _ := helpers.GenerateAllTokens(*foundUser.Email, *foundUser.First_name, *foundUser.Last_name, foundUser.User_id);
 
 			// update the token and refersh token
 			helpers.UpdateAllToken(token, refreshToken, foundUser.User_id);
@@ -200,7 +201,7 @@ func Login() gin.HandlerFunc{
 
 
 func HashPassword(password string) string{
-		bytes, err := bcrypt.GenerateFromPassword([]byte(password, 14));
+		bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14);
 		if err != nil {
 			log.Panic(err);
 		}
@@ -209,13 +210,13 @@ func HashPassword(password string) string{
 }
 
 func VerifyPassword(userPassword string, providePassword string) (bool, string) {
-		err := bcrypt.CompareHashAndPassword([[] byte(providePassword), []byte(userPassword)]);
+		err := bcrypt.CompareHashAndPassword([]byte(providePassword), []byte(userPassword));
 		check := true
 		msg := ""
 
 		if err != nil {
 			msg = fmt.Sprintf("Invalid password");
-			check := false;
+			check = false;
 		}
 
 		return check, msg;
